@@ -1,4 +1,5 @@
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -22,7 +23,7 @@ cfg = OmegaConf.load("configs/default.yaml")
 
 # --- Sidebar controls ---
 st.sidebar.header("Configuration")
-source = st.sidebar.text_input("Video source", value=cfg.inference.source)
+uploaded = st.sidebar.file_uploader("Upload a traffic video", type=["mp4", "avi", "mov"])
 run_button = st.sidebar.button("Run Analysis", type="primary")
 
 st.sidebar.markdown("---")
@@ -52,8 +53,14 @@ chart_placeholder = st.empty()
 st.subheader("Event Log")
 log_placeholder = st.empty()
 
-if run_button:
+if run_button and uploaded:
     try:
+        # Save uploaded file to a temp path so OpenCV can read it
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+        tmp.write(uploaded.read())
+        tmp.flush()
+        source = tmp.name
+
         st.write("Step 1: Opening video source...")
         reader = get_reader(source, fps_target=cfg.inference.fps_target)
         st.write("Step 2: Video opened successfully. Loading model...")
@@ -101,5 +108,9 @@ if run_button:
         st.error(f"Error occurred: {type(e).__name__}: {e}")
         import traceback
         st.code(traceback.format_exc())
+
+elif run_button and not uploaded:
+    st.warning("Please upload a video file first.")
+
 else:
-    st.info("Set a video source in the sidebar and click 'Run Analysis' to begin.")
+    st.info("Upload a traffic video in the sidebar and click 'Run Analysis' to begin.")
